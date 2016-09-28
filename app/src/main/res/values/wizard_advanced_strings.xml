@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Copyright (C) 2010 Regis Montoya (aka r3gis - www.r3gis.fr)
+
+	This file is part of CSipSimple.
+
+    CSipSimple is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CSipSimple is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CSipSimple.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<resources>
+
+    <string name="w_advanced_display_name">Tên tài khoản</string>
+    <string name="w_advanced_display_name_desc">Tên hiển thị cho tài khoản này</string>
+    <string name="w_advanced_caller_id">Tên người gọi</string>
+    <string name="w_advanced_caller_id_desc">ID người gọi để gửi với các cuộc gọi</string>
+    <string name="w_advanced_username">Tên truy nhập</string>
+    <string name="w_advanced_username_desc">Tên người dùng để xác thực máy chủ SIP (không ghi @sip.server)</string>
+    <string name="w_advanced_password">Mật khẩu</string>
+    <string name="w_advanced_password_desc">Mật khẩu để xác thực máy chủ SIP</string>
+    <string name="w_advanced_use_tcp">Sử dụng TCP (không phải UDP)</string>
+    <string name="w_advanced_proxy">Proxy</string>
+    <string name="w_advanced_proxy_desc">Proxy tên miền/IP[:port] (tùy chọn, không phải luôn cần thiết)</string>
+    <string name="w_advanced_auth_id">Xác thực ID SIP</string>
+    <string name="w_advanced_auth_id_desc">Để trống nếu trùng tên người dùng</string>
+
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+
+    <string name="acct_inactive">Chưa kích hoạt</string>
+    <string name="acct_unregistered">Chưa đăng ký</string>
+    <string name="acct_expired">Đăng ký hết hiệu lực</string>
+    <string name="acct_registering">Đang đăng ký…</string>
+    <string name="acct_registered">Đăng ký thành công</string>
+    <string name="acct_regerror">Lỗi trong khi đăng ký</string>
+    <string name="acct_regfailed">Đăng ký lỗi - Hãy kiểm tra cấu hình</string>
+
+</resources>

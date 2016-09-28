@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Copyright (C) 2010 Regis Montoya (aka r3gis - www.r3gis.fr)
+
+	This file is part of CSipSimple. 
+-->
+
+<resources>
+
+    <string name="app_name">VoIP</string>
+    <string name="permlab_useSip">Sử dụng sip</string>
+    <string name="permdesc_useSip">Thực hiện các cuộc gọi</string>
+    <string name="permlab_configureSip">Toàn quyền truy cập tài khoản SIP, nhật ký cuộc gọi</string>
+    <string name="permdesc_configureSip">Cấu hình tài khoản SIP, truy cập đến nhật ký cuộc gọi</string>
+
+</resources>

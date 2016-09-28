@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Copyright (C) 2010 Regis Montoya (aka r3gis - www.r3gis.fr)
+
+	This file is part of CSipSimple. 
+	CSipSimple is free software: you can
+	redistribute it and/or modify it under the terms of the GNU General
+	Public License as published by the Free Software Foundation, either
+	version 3 of the License, or (at your option) any later version.
+
+	CSipSimple is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+	General Public License for more details. You should have received a
+	copy of the GNU General Public License along with CSipSimple. If not,
+	see <http://www.gnu.org/licenses/>.
+-->
+
+<resources>
+    <string name="apply_rewrite">Apply rewriting</string>
+    <string name="next">Tiếp</string>
+    <string name="init">Khởi tạo…</string>
+    <string name="unable_to_download_file">Không thể tải tệp</string>
+    <string name="connection_not_valid">Mạng lưới tuyến được lựa chọn không cho phép với các thiết lập hiện tại bạn đã thiết lập</string>
+    <string name="invalid_sip_uri">SIP URI không hợp lệ cho các cuộc gọi</string>
+    <string name="accounts">Tài khoản</string>
+    <string name="other_accounts">Tài khoản khác</string>
+    <string name="save">Lưu</string>
+    <string name="cancel">Hủy</string>
+    <string name="activate_account">Kích hoạt tài khoản</string>
+    <string name="deactivate_account">Khóa tài khoản</string>
+    <string name="delete_account">Xóa tài khoản</string>
+    <string name="modify_account">Thay đổi tài khoản</string>
+    <string name="add_account">Thêm tài khoản</string>
+    <string name="choose_wizard">Choose wizard</string>
+    <string name="use">Sử dụng :</string>
+    <string name="use_pstn">Sử dụng điện thoại di động</string>
+    <string name="ongoing_call">Đang thực hiện gọi</string>
+    <string name="missed_call">Cuộc gọi nhỡ</string>
+    <string name="recentCalls_empty">Nhật ký cuộc gọi rỗng</string>
+    <string name="reset_users_msg">Thông tin người dùng chưa được thiết lập. Hãy thử lại sau!</string>
+    <string name="admin_password">Mật khẩu admin</string>
+    <string name="admin_password_desc">Thay đổi mật khẩu admin</string>
+    <string name="user_manager">Người dùng</string>
+    <string name="user_manager_desc">Thay đổi mật khẩu người dùng</string>
+    <string name="user_password">Mật khẩu đăng nhập</string>
+    <string name="filters">Bộ lọc</string>
+    <string name="filters_desc">Để áp dụng khi tích hợp Android được sử dụng</string>
+    <string name="filters_for">Bộ lọc</string>
+    <string name="add_filter">Thêm bộ lọc / Viết lại luật</string>
+    <string name="delete_filter">Xóa bộ lọc</string>
+    <string name="callLog_delete_entry">Xóa thông tin cuộc gọi</string>
+    <string name="callLog_delete_all">Xóa tất cả</string>
+    <string name="callLog_delDialog_title">Xóa nhật ký</string>
+    <string name="callLog_delDialog_message">Bạn có chắc chắn muốn xóa tất cả cuộc gọi trong nhật ký?</string>
+    <string name="callLog_delDialog_yes">Yes</string>
+    <string name="callLog_delDialog_no">No</string>
+    <string name="gsm">Điện thoại</string>
+    <string name="dial_tab_name_text">Gọi điện</string>
+    <string name="calllog_tab_name_text">Nhật ký</string>
+    <string name="messages_tab_name_text">Tin nhắn</string>
+    <string name="favorites_tab_name_text">Favorites</string>
+    <string name="contacts_tab_name_text">Danh bạ</string>
+    <string name="add_contact">Thêm liên lạc</string>
+    <string name="contact_details">Thay đổi thông tin</string>
+    <string name="contact_edit_display_name">Tên hiển thị</string>
+    <string name="contact_edit_sip_name">Tên tài khoản Sip</string>
+    <string name="contact_edit_sip_number">Số liên hệ</string>
+    <string name="contact_edit_add">Thêm</string>
+    <string name="no_contacts">Không có liên lạc nào</string>
+    <string name="menu_disconnect">Đóng</string>
+    <string name="service_ticker_registered_text">Đăng ký thành công</string>
+    <string name="outgoing_call_chooser_call_text">Gọi</string>
+    <string name="reorder">Săp xếp lại</string>
+    <string name="backup_restore">Sao lưu / Khôi phục</string>
+    <string name="backup">Sao lưu</string>
+    <string name="faq">FAQ</string>
+    <string name="help">Trợ giúp</string>
+    <string name="rtp_mode">Chế độ thường</string>
+    <string name="srtp_mode">Chế độ mã</string>
+    <string name="record_logs">Bản ghi hồ sơ để gửi cho dev đội và thông báo lỗi</string>
+    <string name="send_logs">Dừng ghi âm (tùy chọn gửi)</string>
+    <string name="view_existing_issues">Tham khảo ý kiến ​​các vấn đề hiện tại</string>
+    <string name="ok">OK</string>
+    <string name="misc">Misc</string>
+    <string name="warning">Cảnh báo</string>
+    <string name="disconnect_and_incoming_explaination">Bạn có chắc chắn muốn thoát khỏi chương trình?</string>
+    <string name="disconnect_and_future_incoming_explaination">Bạn có chắc chắn muốn thoát khỏi chương trình?</string>
+    <string name="gadget_title">SIP - Chuyển tài khoản</string>
+    <string name="pickup_sip_uri">Pickup SIP contact</string>
+    <string name="display_icon_in_status_bar_desc">Nên các ứng dụng hiển thị một biểu tượng trong thanh trạng thái khi đăng ký</string>
+    <string name="display_icon_in_status_bar">Hiển thị biểu tượng trên thanh trạng thái</string>
+    <string name="another_application_use_sip_port">Ứng dụng khác hiện đang sử dụng cổng SIP! Không thể bắt đầu!</string>
+    <string name="choose_phone">Chọn điện thoại</string>
+    <string name="no_phone_found">Không có điện thoại tìm thấy cho liên hệ này</string>
+    <string name="show_password">Hiện mật khẩu</string>
+    <string name="this_codec_is_not_free">** Codec này không phải là miễn phí! ** \nHãy đảm bảo rằng ai đó (nhà cung cấp SIP của bạn hoặc chính bạn) đã mua một giấy phép cho phép bạn sử dụng codec này! Chúng tôi (như các nhà phân phối ứng dụng) không chịu trách nhiệm cho việc sử dụng bất hợp pháp của codec này \nNó tùy thuộc vào bạn có chắc chắn rằng bạn được phép sử dụng codec này  </string>
+    <string name="voice_mail">Thư thoại</string>
+    <string name="voice_mail_number">Số VM</string>
+    <string name="type_sip_uri_or_autocomplete">Sip uri hoặc tự động điền</string>
+    <string name="not_configured_multiple_calls">Ứng dụng này không được cấu hình để cho phép nhiều cuộc gọi</string>
+    <string name="legal_information">Thông tin pháp lý</string>
+    <string name="update_nightly_build">Update nightly build</string>
+    <string name="loading">Đang tải</string>
+    <string name="reconnect">Kết nối lại</string>
+    <string name="switch_to_text">Chuyển sang chế độ văn bản</string>
+    <string name="switch_to_digit">Chuyển sang chế độ chữ số</string>
+    <string name="no_voice_mail_configured">Không có thư thoại cấu hình</string>
+    <string name="no_accounts">Không có tài khoản</string>
+    <string name="activate">Kích hoạt</string>
+    <string name="deactivate">Vô hiệu hóa</string>
+    <string name="audio">Âm thanh</string>
+    <string name="video">Video</string>
+    <string name="invert_selection">Đảo ngược lựa chọn</string>
+    <string name="cant_write_file">Lỗi khi ghi tập tin</string>
+    <string name="info">Thông tin</string>
+    <string name="csipsimple_shortcut">SIP - shortcut</string>
+
+    <!-- Presence stuff -->
+    <string name="online">Online</string>
+    <string name="offline">Offline</string>
+    <string name="away">Đi chỗ khác</string>
+    <string name="busy">Đang bận</string>
+    <string name="activate_presence_sharing">Chia sẻ trạng thái</string>
+    <string name="deactivate_presence_sharing">Ngừng chia sẻ trạng thái</string>
+    <string name="presence">Trạng thài</string>
+    <string name="configure">Cấu hình</string>
+    <string name="set_android_group">Chọn nhóm Android</string>
+    <string name="set_sip_data">Chọn dữ liệu SIP URI</string>
+    <string name="uri_nbr">Số điện thoại</string>
+    <string name="uri_im">IM với chương trình tùy chỉnh SIP</string>
+    <string name="uri_sip">Cuộc gọi internet</string>
+    <string name="error_login_settings">Bạn không có quyền truy cập cấu hình hệ thống!</string>
+
+</resources>

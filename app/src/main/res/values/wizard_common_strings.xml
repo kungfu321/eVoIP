@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     This file is part of CSipSimple.
+
+    CSipSimple is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CSipSimple is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CSipSimple.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="user_personal_domain">User personal domain</string>
+    <string name="user_prefix">User prefix</string>
+    <string name="user_suffix">User suffix</string>
+
+    <string name="w_common_display_name">Tên tài khoản</string>
+    <string name="w_common_display_name_desc">Tên hiển thị cho tài khoản này</string>
+    <string name="w_common_username">Tên truy nhập</string>
+    <string name="w_common_username_desc">Tên đăng nhập tài khoản SIP(không viết @sip:server)</string>
+    <string name="w_common_phone_number">Số điện thoại</string>
+    <string name="w_common_phone_number_desc">Số điện thoại Sip được cấp bởi nhà cung cấp của bạn</string>
+    <string name="w_common_password">Mật khẩu</string>
+    <string name="w_common_password_desc">Mật khẩu tài khoản của bạn</string>
+    <string name="w_common_server">Máy chủ SIP</string>
+    <string name="w_common_server_desc">Máy chủ SIP tên miền/IP[:cổng]</string>
+    <string name="create_account">Tạo tài khoản</string>
+    <string name="already_have_account">Tôi đã có tài khoản</string>
+    <string name="first_name">Tên đầu</string>
+    <string name="last_name">Tên cuối</string>
+    <string name="email_address">Địa chỉ thư điện tử</string>
+    <string name="captcha">Captcha</string>
+    <string name="country_code">Mã vùn quốc gia</string>
+
+</resources>
