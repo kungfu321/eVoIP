@@ -26,12 +26,14 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.app.AlertDialog.Builder;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
@@ -39,12 +41,16 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
+import android.text.InputType;
 import android.text.TextUtils;
+import android.text.method.PasswordTransformationMethod;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.ActionBar.Tab;
@@ -58,16 +64,19 @@ import com.csipsimple.api.SipConfigManager;
 import com.csipsimple.api.SipManager;
 import com.csipsimple.api.SipProfile;
 import com.csipsimple.ui.account.AccountsEditList;
+import com.csipsimple.ui.account.CustomDialogPassword;
 import com.csipsimple.ui.calllog.CallLogListFragment;
 import com.csipsimple.ui.dialpad.DialerFragment;
 import com.csipsimple.ui.favorites.FavListFragment;
 import com.csipsimple.ui.help.Help;
 import com.csipsimple.ui.messages.ConversationsListFragment;
+import com.csipsimple.ui.prefs.PrefAdministrator;
 import com.csipsimple.ui.warnings.WarningFragment;
 import com.csipsimple.ui.warnings.WarningUtils;
 import com.csipsimple.ui.warnings.WarningUtils.OnWarningChanged;
 import com.csipsimple.utils.Compatibility;
 import com.csipsimple.utils.CustomDistribution;
+import com.csipsimple.utils.Has256;
 import com.csipsimple.utils.Log;
 import com.csipsimple.utils.NightlyUpdater;
 import com.csipsimple.utils.NightlyUpdater.UpdaterPopupLauncher;
@@ -78,11 +87,28 @@ import com.csipsimple.utils.UriUtils;
 import com.csipsimple.utils.backup.BackupWrapper;
 import com.csipsimple.wizards.BasePrefsWizard;
 import com.csipsimple.wizards.WizardUtils.WizardInfo;
+import com.csipsimple.utils.Has256;
+import com.safenet.control.Control;
+import com.safenet.pkcs11.PKCS11;
+import com.safenet.sun.security.pkcs11.wrapper.PKCS11Exception;
 
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ResourceBundle;
+
+import static com.safenet.sun.security.pkcs11.wrapper.PKCS11Constants.CKF_RW_SESSION;
+import static com.safenet.sun.security.pkcs11.wrapper.PKCS11Constants.CKF_SERIAL_SESSION;
+import static com.safenet.sun.security.pkcs11.wrapper.PKCS11Constants.CKU_USER;
 
 public class SipHome extends SherlockFragmentActivity implements OnWarningChanged {
+    private static final long ENGINE_SLOT_ID = 0;
+    private static final int NO_SESSION   = -1;
+    private long m_hSession       = NO_SESSION;
+    private PKCS11 m_pkcs11       = null;
+    public static Control g_control;
+    private boolean loggedIn = false;
+
     public static final int ACCOUNTS_MENU = Menu.FIRST + 1;
     public static final int PARAMS_MENU = Menu.FIRST + 2;
     public static final int CLOSE_MENU = Menu.FIRST + 3;
@@ -112,6 +138,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
     private Thread asyncSanityChecker;
     private Tab warningTab;
     private ObjectAnimator warningTabfadeAnim;
+    private EditText input;
 
     /**
      * Listener interface for Fragments accommodated in {@link ViewPager}
@@ -140,7 +167,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 
         // showAbTitle = Compatibility.hasPermanentMenuKey
 
-        
+
 
         Tab dialerTab = ab.newTab()
                  .setContentDescription(R.string.dial_tab_name_text)
@@ -160,13 +187,13 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 //                    .setContentDescription(R.string.messages_tab_name_text)
 //                    .setIcon(R.drawable.ic_ab_text_holo_dark);
 //        }
-        
+
 //        warningTab = ab.newTab().setIcon(android.R.drawable.ic_dialog_alert);
 //        warningTabfadeAnim = ObjectAnimator.ofInt(warningTab.getIcon(), "alpha", 255, 100);
 //        warningTabfadeAnim.setDuration(1500);
 //        warningTabfadeAnim.setRepeatCount(ValueAnimator.INFINITE);
 //        warningTabfadeAnim.setRepeatMode(ValueAnimator.REVERSE);
-        
+
         mDualPane = getResources().getBoolean(R.bool.use_dual_panes);
 
         mViewPager = (ViewPager) findViewById(R.id.pager);
@@ -179,7 +206,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 //        if (messagingTab != null) {
 //            mTabsAdapter.addTab(messagingTab, ConversationsListFragment.class, TAB_ID_MESSAGES);
 //        }
-        
+
 
         hasTriedOnceActivateAcc = false;
 
@@ -189,7 +216,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 
         selectTabWithAction(getIntent());
         Log.setLogLevel(prefProviderWrapper.getLogLevel());
-        
+
 
         // Async check
 //        asyncSanityChecker = new Thread() {
@@ -198,7 +225,167 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 //            }
 //        };
 //        asyncSanityChecker.start();
-        
+
+    }
+
+    private void resetUsers() {
+        try
+        {
+            prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, true);
+            PrefAdministrator ad = new PrefAdministrator(SipHome.this);
+            ad.addUser("Administrator", "1234567890", PrefAdministrator.USERS_TYPE_ADMIN);
+            ad.addUser("User", "1234", PrefAdministrator.USERS_TYPE_USER);
+        }
+        catch(Exception ex){}
+    }
+
+    private void authentication()
+    {
+        boolean doOpen = prefProviderWrapper.getPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
+        if (doOpen) {
+            input = new EditText(this);
+            input.setHint(R.string.user_password);
+            input.setTransformationMethod(PasswordTransformationMethod.getInstance());
+            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+            AlertDialog.Builder signDlg = new Builder(this);
+            signDlg.setTitle(R.string.user_password);
+            signDlg.setView(input);
+            signDlg.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    // TODO Auto-generated method stub
+                    //Toast.makeText(Main.this, tokenPassword.getText().toString() + " Ky so "+selectedFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+
+                    String pass = input.getText()+"";
+                    PrefAdministrator ad = new PrefAdministrator(SipHome.this);
+                    try
+                    {
+                        if(ad.isCurrentPassword(pass, PrefAdministrator.USERS_TYPE_USER))
+                        {
+                            //Lam gi thi lam o day
+                            prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
+                            return;
+                        }
+                        else
+                        {
+                            finish();
+                        }
+                    }catch(Exception ex){
+                        resetUsers();
+                        Toast.makeText(SipHome.this, getResources().getString(R.string.reset_users_msg), Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                }
+            });
+
+            signDlg.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.cancel();
+                    finish();
+                }
+            });
+
+            signDlg.setCancelable(false);
+
+            signDlg.show();
+        }
+    }
+
+    private void authenticationWithToken()
+    {
+        input = new EditText(this);
+        input.setHint(R.string.user_password);
+        input.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        AlertDialog.Builder signDlg = new Builder(this);
+        signDlg.setTitle(R.string.user_password);
+        signDlg.setView(input);
+        signDlg.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+                String pass = input.getText().toString();
+                try
+                {
+                    //Login
+                    m_pkcs11 = new PKCS11();
+
+                    //Initialize PKCS11
+                    m_pkcs11.C_Initialize(null);
+
+                    //Open session
+                    m_hSession = m_pkcs11.C_OpenSession(ENGINE_SLOT_ID, (CKF_RW_SESSION | CKF_SERIAL_SESSION), null, null );
+
+                    //Login
+                    m_pkcs11.C_Login(m_hSession, CKU_USER, pass.toCharArray());
+                    //Toast.makeText(SipHome.this, "OK", Toast.LENGTH_SHORT).show();
+                    //Logout
+                    m_pkcs11.C_Logout(m_hSession);
+                    //Toast.makeText(SipHome.this, "Token logged out", Toast.LENGTH_SHORT).show();
+                    loggedIn = true;
+                }
+                catch(PKCS11Exception e)
+                {
+                    Toast.makeText(SipHome.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                    finish();
+                }
+                finally
+                {
+                    try
+                    {
+                        if (m_hSession != NO_SESSION)
+                        {
+                            //close session
+                            m_pkcs11.C_CloseSession(m_hSession);
+                            m_hSession = NO_SESSION;
+                        }
+
+                        m_pkcs11.C_Finalize(null);
+
+                    }
+                    catch (Exception e)
+                    {
+                        Toast.makeText(SipHome.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                }
+//                if (getPassword() == null) {
+//                    try {
+//                        savePassword(Has256.sha256Digest(pass));
+//                    } catch (SignatureException e) {
+//                        e.printStackTrace();
+//                    }
+//                    loggedIn = true;
+//                }
+//                if (getPassword() != null && loggedIn == false){
+//                    try {
+//                        if (getPassword().equals(Has256.sha256Digest(pass))) {
+//                            loggedIn = true;
+//                            dialog.cancel();
+//                        }
+//
+//                    } catch (SignatureException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+            }
+        });
+
+        signDlg.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+                finish();
+            }
+        });
+
+        signDlg.setCancelable(false);
+
+        signDlg.show();
+
     }
 
     /**
@@ -220,7 +407,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         private final List<String> mTabs = new ArrayList<String>();
         private final List<Integer> mTabsId = new ArrayList<Integer>();
         private boolean hasClearedDetails = false;
-        
+
 
         private int mCurrentPosition = -1;
         /**
@@ -244,21 +431,21 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
             mActionBar.addTab(tab.setTabListener(this));
             notifyDataSetChanged();
         }
-        
+
         public void removeTabAt(int location) {
             mTabs.remove(location);
             mTabsId.remove(location);
             mActionBar.removeTabAt(location);
             notifyDataSetChanged();
         }
-        
+
         public Integer getIdForPosition(int position) {
             if(position >= 0 && position < mTabsId.size()) {
                 return mTabsId.get(position);
             }
             return null;
         }
-        
+
         public Integer getPositionForId(int id) {
             int fPos = mTabsId.indexOf(id);
             if(fPos >= 0) {
@@ -404,7 +591,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // In that case, we will setup the "current position" soon after the
         // ViewPager is ready.
         final int currentPosition = mViewPager != null ? mViewPager.getCurrentItem() : -1;
-        Integer tabId = null; 
+        Integer tabId = null;
         if(mTabsAdapter != null) {
             tabId = mTabsAdapter.getIdForPosition(currentPosition);
         }
@@ -443,7 +630,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 mWarningFragment.setWarningList(warningList);
                 mWarningFragment.setOnWarningChangedListener(this);
             }
-            
+
         }
 
     }
@@ -455,7 +642,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // integration
         // Compatibility.getDialerIntegrationState(SipHome.this);
         // }
-        
+
         // Nightly build check
         if(NightlyUpdater.isNightlyBuild(this)) {
             Log.d(THIS_FILE, "Sanity check : we have a nightly build here");
@@ -482,7 +669,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 }
             }
         }
-        
+
         applyWarning(WarningUtils.WARNING_PRIVILEGED_INTENT, WarningUtils.shouldWarnPrivilegedIntent(this, prefProviderWrapper));
         applyWarning(WarningUtils.WARNING_NO_STUN, WarningUtils.shouldWarnNoStun(prefProviderWrapper));
         applyWarning(WarningUtils.WARNING_VPN_ICS, WarningUtils.shouldWarnVpnIcs(prefProviderWrapper));
@@ -583,16 +770,20 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         onForeground = true;
 
         prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
-        
+
         // Set visible the currently selected account
         sendFragmentVisibilityChange(mViewPager.getCurrentItem(), true);
-        
+
         Log.d(THIS_FILE, "WE CAN NOW start SIP service");
         startSipService();
-        
+//        authentication();
+        if(!loggedIn)
+        {
+            authenticationWithToken();
+        }
         applyTheme();
     }
-    
+
     private ArrayList<View> getVisibleLeafs(View v) {
         ArrayList<View> res = new ArrayList<View>();
         if(v.getVisibility() != View.VISIBLE) {
@@ -676,12 +867,12 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 if(i > 0) {
                     t.applyBackgroundDrawable((View) leafs.get(0).getParent().getParent(), "abs_background");
                 }
-                
+
                 Drawable d = t.getDrawableResource("split_background");
                 if (d != null) {
                     ab.setSplitBackgroundDrawable(d);
                 }
-                
+
                 t.applyBackgroundDrawable(vg, "content_background");
             }
         }
@@ -747,7 +938,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 }else {
                     initTabId = 0;
                 }
-                
+
             }
         }
     }
@@ -764,7 +955,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
     public boolean onCreateOptionsMenu(Menu menu) {
 
         int actionRoom = getResources().getBoolean(R.bool.menu_in_bar) ? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
-        
+
         WizardInfo distribWizard = CustomDistribution.getCustomDistributionWizard();
         if (distribWizard != null) {
             menu.add(Menu.NONE, DISTRIB_ACCOUNT_MENU, Menu.NONE, "My " + distribWizard.label)
@@ -868,7 +1059,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         }
         return super.onOptionsItemSelected(item);
     }
-    
+
     private final static int CHANGE_PREFS = 1;
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -888,12 +1079,12 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
             finish();
         }
     }
-    
-    
-    
-    
+
+
+
+
     // Warning view
-    
+
     private List<String> warningList = new ArrayList<String>();
     private void applyWarning(String warnCode, boolean active) {
         synchronized (warningList) {
@@ -905,14 +1096,14 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         }
         runOnUiThread(refreshWarningTabRunnable);
     }
-    
+
     Runnable refreshWarningTabRunnable = new Runnable() {
         @Override
         public void run() {
             refreshWarningTabDisplay();
         }
     };
-    
+
     private void refreshWarningTabDisplay() {
         List<String> warnList = new ArrayList<String>();
         synchronized (warningList) {
@@ -950,8 +1141,6 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 //            }
 //        }
     }
-
-
 
     @Override
     public void onWarningRemoved(String warnKey) {
