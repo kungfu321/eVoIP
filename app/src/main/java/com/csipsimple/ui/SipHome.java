@@ -1,26 +1,28 @@
 /**
  * Copyright (C) 2010-2012 Regis Montoya (aka r3gis - www.r3gis.fr)
  * This file is part of CSipSimple.
- *
- *  CSipSimple is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *  If you own a pjsip commercial license you can also redistribute it
- *  and/or modify it under the terms of the GNU Lesser General Public License
- *  as an android library.
- *
- *  CSipSimple is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with CSipSimple.  If not, see <http://www.gnu.org/licenses/>.
+ * <p>
+ * CSipSimple is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * If you own a pjsip commercial license you can also redistribute it
+ * and/or modify it under the terms of the GNU Lesser General Public License
+ * as an android library.
+ * <p>
+ * CSipSimple is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * <p>
+ * You should have received a copy of the GNU General Public License
+ * along with CSipSimple.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package com.csipsimple.ui;
 
+import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -28,13 +30,17 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.app.AlertDialog.Builder;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -44,6 +50,7 @@ import android.support.v4.view.ViewPager;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.method.PasswordTransformationMethod;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -59,6 +66,7 @@ import com.actionbarsherlock.internal.nineoldandroids.animation.ObjectAnimator;
 import com.actionbarsherlock.internal.nineoldandroids.animation.ValueAnimator;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
+import com.actionbarsherlock.view.Window;
 import com.csipsimple.R;
 import com.csipsimple.api.SipConfigManager;
 import com.csipsimple.api.SipManager;
@@ -71,6 +79,7 @@ import com.csipsimple.ui.favorites.FavListFragment;
 import com.csipsimple.ui.help.Help;
 import com.csipsimple.ui.messages.ConversationsListFragment;
 import com.csipsimple.ui.prefs.PrefAdministrator;
+import com.csipsimple.ui.prefs.SessionManager;
 import com.csipsimple.ui.warnings.WarningFragment;
 import com.csipsimple.ui.warnings.WarningUtils;
 import com.csipsimple.ui.warnings.WarningUtils.OnWarningChanged;
@@ -95,6 +104,7 @@ import com.safenet.sun.security.pkcs11.wrapper.PKCS11Exception;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 import static com.safenet.sun.security.pkcs11.wrapper.PKCS11Constants.CKF_RW_SESSION;
@@ -103,9 +113,9 @@ import static com.safenet.sun.security.pkcs11.wrapper.PKCS11Constants.CKU_USER;
 
 public class SipHome extends SherlockFragmentActivity implements OnWarningChanged {
     private static final long ENGINE_SLOT_ID = 0;
-    private static final int NO_SESSION   = -1;
-    private long m_hSession       = NO_SESSION;
-    private PKCS11 m_pkcs11       = null;
+    private static final int NO_SESSION = -1;
+    private long m_hSession = NO_SESSION;
+    private PKCS11 m_pkcs11 = null;
     public static Control g_control;
     private boolean loggedIn = false;
 
@@ -139,6 +149,10 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
     private Tab warningTab;
     private ObjectAnimator warningTabfadeAnim;
     private EditText input;
+    private SessionManager session;
+    private SharedPreferences sharedPreferences;
+    private SharedPreferences.Editor editor;
+    private String FINALPASSWORD = "finalPass";
 
     /**
      * Listener interface for Fragments accommodated in {@link ViewPager}
@@ -168,12 +182,11 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // showAbTitle = Compatibility.hasPermanentMenuKey
 
 
-
         Tab dialerTab = ab.newTab()
-                 .setContentDescription(R.string.dial_tab_name_text)
+                .setContentDescription(R.string.dial_tab_name_text)
                 .setIcon(R.drawable.ic_ab_dialer_holo_dark);
         Tab callLogTab = ab.newTab()
-                 .setContentDescription(R.string.calllog_tab_name_text)
+                .setContentDescription(R.string.calllog_tab_name_text)
                 .setIcon(R.drawable.ic_ab_history_holo_dark);
 //        Tab favoritesTab = null;
 //        if(CustomDistribution.supportFavorites()) {
@@ -225,89 +238,64 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 //            }
 //        };
 //        asyncSanityChecker.start();
-
+        requestP();
     }
 
-    private void resetUsers() {
-        try
-        {
-            prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, true);
-            PrefAdministrator ad = new PrefAdministrator(SipHome.this);
-            ad.addUser("Administrator", "1234567890", PrefAdministrator.USERS_TYPE_ADMIN);
-            ad.addUser("User", "1234", PrefAdministrator.USERS_TYPE_USER);
-        }
-        catch(Exception ex){}
-    }
-
-    private void authentication()
-    {
-        boolean doOpen = prefProviderWrapper.getPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
-        if (doOpen) {
-            input = new EditText(this);
-            input.setHint(R.string.user_password);
-            input.setTransformationMethod(PasswordTransformationMethod.getInstance());
-            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-
-            AlertDialog.Builder signDlg = new Builder(this);
-            signDlg.setTitle(R.string.user_password);
-            signDlg.setView(input);
-            signDlg.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    // TODO Auto-generated method stub
-                    //Toast.makeText(Main.this, tokenPassword.getText().toString() + " Ky so "+selectedFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-
-                    String pass = input.getText()+"";
-                    PrefAdministrator ad = new PrefAdministrator(SipHome.this);
-                    try
-                    {
-                        if(ad.isCurrentPassword(pass, PrefAdministrator.USERS_TYPE_USER))
-                        {
-                            //Lam gi thi lam o day
-                            prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
-                            return;
-                        }
-                        else
-                        {
-                            finish();
-                        }
-                    }catch(Exception ex){
-                        resetUsers();
-                        Toast.makeText(SipHome.this, getResources().getString(R.string.reset_users_msg), Toast.LENGTH_LONG).show();
-                        finish();
-                    }
-                }
-            });
-
-            signDlg.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.cancel();
-                    finish();
-                }
-            });
-
-            signDlg.setCancelable(false);
-
-            signDlg.show();
+    public void requestP() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_SIP)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Check Permissions Now
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.USE_SIP},
+                    1);
         }
     }
 
-    private void authenticationWithToken()
-    {
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 1: {
+
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Log.e("FUCK", "PERMISSIONS");
+
+                } else {
+
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                    Toast.makeText(SipHome.this, "Permission denied to read your External storage", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
+    private void authenticationWithToken() {
+        sharedPreferences = getSharedPreferences(getPackageName(), 0);
+        editor = sharedPreferences.edit();
         input = new EditText(this);
         input.setHint(R.string.user_password);
         input.setTransformationMethod(PasswordTransformationMethod.getInstance());
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-
-        AlertDialog.Builder signDlg = new Builder(this);
-        signDlg.setTitle(R.string.user_password);
+        final AlertDialog.Builder signDlg = new Builder(this);
+        if(sharedPreferences.getString(FINALPASSWORD, null) != null) {
+            signDlg.setTitle(R.string.user_password);
+        } else {
+            signDlg.setTitle(R.string.set_password);
+        }
         signDlg.setView(input);
+
         signDlg.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
                 String pass = input.getText().toString();
                 try
                 {
@@ -353,25 +341,6 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                         finish();
                     }
                 }
-//                if (getPassword() == null) {
-//                    try {
-//                        savePassword(Has256.sha256Digest(pass));
-//                    } catch (SignatureException e) {
-//                        e.printStackTrace();
-//                    }
-//                    loggedIn = true;
-//                }
-//                if (getPassword() != null && loggedIn == false){
-//                    try {
-//                        if (getPassword().equals(Has256.sha256Digest(pass))) {
-//                            loggedIn = true;
-//                            dialog.cancel();
-//                        }
-//
-//                    } catch (SignatureException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
             }
         });
 
@@ -440,7 +409,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         }
 
         public Integer getIdForPosition(int position) {
-            if(position >= 0 && position < mTabsId.size()) {
+            if (position >= 0 && position < mTabsId.size()) {
                 return mTabsId.get(position);
             }
             return null;
@@ -448,7 +417,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 
         public Integer getPositionForId(int id) {
             int fPos = mTabsId.indexOf(id);
-            if(fPos >= 0) {
+            if (fPos >= 0) {
                 return fPos;
             }
             return null;
@@ -544,13 +513,13 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 
     private DialerFragment mDialpadFragment;
     private CallLogListFragment mCallLogFragment;
-//    private ConversationsListFragment mMessagesFragment;
+    //    private ConversationsListFragment mMessagesFragment;
 //    private FavListFragment mPhoneFavoriteFragment;
     private WarningFragment mWarningFragment;
 
     private Fragment getFragmentAt(int position) {
         Integer id = mTabsAdapter.getIdForPosition(position);
-        if(id != null) {
+        if (id != null) {
             if (id == TAB_ID_DIALER) {
                 return mDialpadFragment;
             } else if (id == TAB_ID_CALL_LOG) {
@@ -579,7 +548,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
             if (fragment instanceof ViewPagerVisibilityListener) {
                 ((ViewPagerVisibilityListener) fragment).onVisibilityChanged(visibility);
             }
-        }catch(IllegalStateException e) {
+        } catch (IllegalStateException e) {
             Log.e(THIS_FILE, "Fragment not anymore managed");
         }
     }
@@ -592,7 +561,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // ViewPager is ready.
         final int currentPosition = mViewPager != null ? mViewPager.getCurrentItem() : -1;
         Integer tabId = null;
-        if(mTabsAdapter != null) {
+        if (mTabsAdapter != null) {
             tabId = mTabsAdapter.getIdForPosition(currentPosition);
         }
         if (fragment instanceof DialerFragment) {
@@ -601,7 +570,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 mDialpadFragment.onVisibilityChanged(true);
                 initTabId = null;
             }
-            if(initDialerWithText != null) {
+            if (initDialerWithText != null) {
                 mDialpadFragment.setTextDialing(true);
                 mDialpadFragment.setTextFieldValue(initDialerWithText);
                 initDialerWithText = null;
@@ -644,7 +613,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // }
 
         // Nightly build check
-        if(NightlyUpdater.isNightlyBuild(this)) {
+        if (NightlyUpdater.isNightlyBuild(this)) {
             Log.d(THIS_FILE, "Sanity check : we have a nightly build here");
             ConnectivityManager connectivityService = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             NetworkInfo ni = connectivityService.getActiveNetworkInfo();
@@ -686,7 +655,9 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 serviceIntent.putExtra(SipManager.EXTRA_OUTGOING_ACTIVITY, new ComponentName(SipHome.this, SipHome.class));
                 startService(serviceIntent);
                 postStartSipService();
-            };
+            }
+
+            ;
         };
         t.start();
 
@@ -712,7 +683,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         // If we have no account yet, open account panel,
         if (!hasTriedOnceActivateAcc) {
 
-            Cursor c = getContentResolver().query(SipProfile.ACCOUNT_URI, new String[] {
+            Cursor c = getContentResolver().query(SipProfile.ACCOUNT_URI, new String[]{
                     SipProfile.FIELD_ID
             }, null, null, null);
             int accountCount = 0;
@@ -753,8 +724,8 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
     protected void onPause() {
         Log.d(THIS_FILE, "On Pause SIPHOME");
         onForeground = false;
-        if(asyncSanityChecker != null) {
-            if(asyncSanityChecker.isAlive()) {
+        if (asyncSanityChecker != null) {
+            if (asyncSanityChecker.isAlive()) {
                 asyncSanityChecker.interrupt();
                 asyncSanityChecker = null;
             }
@@ -768,6 +739,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         Log.d(THIS_FILE, "On Resume SIPHOME");
         super.onResume();
         onForeground = true;
+        session = new SessionManager(getApplicationContext());
 
         prefProviderWrapper.setPreferenceBooleanValue(PreferencesWrapper.HAS_BEEN_QUIT, false);
 
@@ -777,20 +749,23 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         Log.d(THIS_FILE, "WE CAN NOW start SIP service");
         startSipService();
 //        authentication();
-        if(!loggedIn)
-        {
-            authenticationWithToken();
+        session.logoutUser();
+        if (!session.isLoggedIn()) {
+//            authenticationWithToken();
+//            CustomDialogPassword dialog = new CustomDialogPassword(SipHome.this);
+//            dialog.showDialog();
+            Log.e("fuck", session.isLoggedIn() + "");
         }
         applyTheme();
     }
 
     private ArrayList<View> getVisibleLeafs(View v) {
         ArrayList<View> res = new ArrayList<View>();
-        if(v.getVisibility() != View.VISIBLE) {
+        if (v.getVisibility() != View.VISIBLE) {
             return res;
         }
-        if(v instanceof ViewGroup) {
-            for(int i = 0; i < ((ViewGroup) v).getChildCount(); i++) {
+        if (v instanceof ViewGroup) {
+            for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) {
                 ArrayList<View> subLeafs = getVisibleLeafs(((ViewGroup) v).getChildAt(i));
                 res.addAll(subLeafs);
             }
@@ -864,7 +839,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                         }
                     }
                 }
-                if(i > 0) {
+                if (i > 0) {
                     t.applyBackgroundDrawable((View) leafs.get(0).getParent().getParent(), "abs_background");
                 }
 
@@ -886,6 +861,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
 
     private String initDialerWithText = null;
     Integer initTabId = null;
+
     private void selectTabWithAction(Intent intent) {
         if (intent != null) {
             String callAction = intent.getAction();
@@ -898,7 +874,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                         || callAction.equalsIgnoreCase(Intent.ACTION_VIEW)
                         || callAction.equalsIgnoreCase(Intent.ACTION_SENDTO) /* TODO : sendto should im if not csip? */) {
                     Integer pos = mTabsAdapter.getPositionForId(TAB_ID_DIALER);
-                    if(pos != null) {
+                    if (pos != null) {
                         toSelectTab = ab.getTabAt(pos);
                         Uri data = intent.getData();
                         String nbr = UriUtils.extractNumberFromIntent(intent, this);
@@ -915,7 +891,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                     }
                 } else if (callAction.equalsIgnoreCase(SipManager.ACTION_SIP_CALLLOG)) {
                     Integer pos = mTabsAdapter.getPositionForId(TAB_ID_CALL_LOG);
-                    if(pos != null) {
+                    if (pos != null) {
                         toSelectTab = ab.getTabAt(pos);
                         toSelectId = TAB_ID_CALL_LOG;
                     }
@@ -935,7 +911,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
                 if (toSelectTab != null) {
                     ab.selectTab(toSelectTab);
                     initTabId = toSelectId;
-                }else {
+                } else {
                     initTabId = 0;
                 }
 
@@ -964,14 +940,14 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         }
         if (CustomDistribution.distributionWantsOtherAccounts()) {
             int accountRoom = actionRoom;
-            if(Compatibility.isCompatible(13)) {
+            if (Compatibility.isCompatible(13)) {
                 accountRoom |= MenuItem.SHOW_AS_ACTION_WITH_TEXT;
             }
             menu.add(Menu.NONE, ACCOUNTS_MENU, Menu.NONE,
                     (distribWizard == null) ? R.string.accounts : R.string.other_accounts)
                     .setIcon(R.drawable.ic_menu_account_list)
                     .setAlphabeticShortcut('a')
-                    .setShowAsAction( accountRoom );
+                    .setShowAsAction(accountRoom);
         }
         menu.add(Menu.NONE, PARAMS_MENU, Menu.NONE, R.string.prefs)
                 .setIcon(android.R.drawable.ic_menu_preferences);
@@ -1029,9 +1005,9 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
             case DISTRIB_ACCOUNT_MENU:
                 WizardInfo distribWizard = CustomDistribution.getCustomDistributionWizard();
 
-                Cursor c = getContentResolver().query(SipProfile.ACCOUNT_URI, new String[] {
+                Cursor c = getContentResolver().query(SipProfile.ACCOUNT_URI, new String[]{
                         SipProfile.FIELD_ID
-                }, SipProfile.FIELD_WIZARD + "=?", new String[] {
+                }, SipProfile.FIELD_WIZARD + "=?", new String[]{
                         distribWizard.id
                 }, null);
 
@@ -1061,9 +1037,10 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
     }
 
     private final static int CHANGE_PREFS = 1;
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == CHANGE_PREFS) {
+        if (requestCode == CHANGE_PREFS) {
             sendBroadcast(new Intent(SipManager.ACTION_SIP_REQUEST_RESTART));
             BackupWrapper.getInstance(this).dataChanged();
         }
@@ -1075,22 +1052,21 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         Intent intent = new Intent(SipManager.ACTION_OUTGOING_UNREGISTER);
         intent.putExtra(SipManager.EXTRA_OUTGOING_ACTIVITY, new ComponentName(this, SipHome.class));
         sendBroadcast(intent);
-        if(quit) {
+        if (quit) {
             finish();
         }
     }
 
 
-
-
     // Warning view
 
     private List<String> warningList = new ArrayList<String>();
+
     private void applyWarning(String warnCode, boolean active) {
         synchronized (warningList) {
-            if(active) {
+            if (active) {
                 warningList.add(warnCode);
-            }else {
+            } else {
                 warningList.remove(warnCode);
             }
         }
@@ -1109,7 +1085,7 @@ public class SipHome extends SherlockFragmentActivity implements OnWarningChange
         synchronized (warningList) {
             warnList.addAll(warningList);
         }
-        if(mWarningFragment != null) {
+        if (mWarningFragment != null) {
             mWarningFragment.setWarningList(warnList);
             mWarningFragment.setOnWarningChangedListener(this);
         }

@@ -44,6 +44,7 @@
     <string name="user_manager">Người dùng</string>
     <string name="user_manager_desc">Thay đổi mật khẩu người dùng</string>
     <string name="user_password">Mật khẩu đăng nhập</string>
+    <string name="set_password">Đặt mật khẩu</string>
     <string name="filters">Bộ lọc</string>
     <string name="filters_desc">Để áp dụng khi tích hợp Android được sử dụng</string>
     <string name="filters_for">Bộ lọc</string>
